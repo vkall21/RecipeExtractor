@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Recipe } from '../types';
 
-const client = new Anthropic({ apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY });
+const client = new Anthropic({ apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY, dangerouslyAllowBrowser: true });
 
 function parseJsonLd(html: string): Recipe | null {
   const scriptRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
@@ -73,15 +73,31 @@ async function extractWithClaude(html: string): Promise<Recipe> {
   };
 }
 
-export async function extractRecipeFromUrl(url: string): Promise<Recipe> {
+async function fetchHtml(url: string): Promise<string> {
+  const isWeb = typeof document !== 'undefined';
+  if (isWeb) {
+    const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+    console.log('[extractor] fetching via proxy:', proxyUrl);
+    const response = await fetch(proxyUrl);
+    if (!response.ok) throw new Error(`Proxy fetch failed: ${response.status}`);
+    return response.text();
+  }
   const response = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RecipeExtractor/1.0)' },
   });
   if (!response.ok) throw new Error(`Failed to fetch URL: ${response.status}`);
-  const html = await response.text();
+  return response.text();
+}
 
+export async function extractRecipeFromUrl(url: string): Promise<Recipe> {
+  console.log('[extractor] starting extraction for:', url);
+  const html = await fetchHtml(url);
+  console.log('[extractor] HTML length:', html.length);
   const fromJsonLd = parseJsonLd(html);
+  console.log('[extractor] JSON-LD found:', !!fromJsonLd);
+
   const recipe = fromJsonLd ?? (await extractWithClaude(html));
+  console.log('[extractor] recipe title:', recipe.title);
   recipe.sourceUrl = url;
   return recipe;
 }

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IngredientCategory, Recipe, ShoppingItem } from '../types';
+import { Recipe, ShoppingItem } from '../types';
 import { tryMergeIngredient } from '../utils/ingredientMerger';
 
 const RECIPES_KEY = '@recipes';
@@ -21,36 +21,48 @@ export async function deleteRecipe(id: string): Promise<void> {
   await AsyncStorage.setItem(RECIPES_KEY, JSON.stringify(recipes.filter(r => r.id !== id)));
 }
 
+function consolidate(items: ShoppingItem[]): ShoppingItem[] {
+  const result: ShoppingItem[] = [];
+  for (const item of items) {
+    const texts = result.map(r => r.text);
+    const merge = tryMergeIngredient(item.text, texts);
+    if (merge) {
+      const idx = result.findIndex(r => r.text === merge.matchedText);
+      if (idx !== -1) result[idx] = { ...result[idx], text: merge.mergedText };
+    } else {
+      result.push(item);
+    }
+  }
+  return result;
+}
+
 export async function loadShoppingList(): Promise<ShoppingItem[]> {
   const json = await AsyncStorage.getItem(SHOPPING_KEY);
   if (!json) return [];
   const items: ShoppingItem[] = JSON.parse(json);
-  // Backfill category for items saved before categorization was added
-  return items.map(i => ({ ...i, category: i.category ?? 'Other' }));
+  const consolidated = consolidate(items);
+  // Persist if consolidation changed anything
+  if (consolidated.length !== items.length) await saveShoppingList(consolidated);
+  return consolidated;
 }
 
 export async function saveShoppingList(items: ShoppingItem[]): Promise<void> {
   await AsyncStorage.setItem(SHOPPING_KEY, JSON.stringify(items));
 }
 
-export async function addIngredientsToShoppingList(
-  categorized: { text: string; category: IngredientCategory }[]
-): Promise<void> {
+export async function addIngredientsToShoppingList(ingredients: string[]): Promise<void> {
   let list = await loadShoppingList();
 
-  for (const { text, category } of categorized) {
+  for (const text of ingredients) {
     const existingTexts = list.map(i => i.text);
     const merge = tryMergeIngredient(text, existingTexts);
 
     if (merge) {
-      // Replace the matched item with the merged quantity
       list = list.map(item =>
-        item.text === merge.matchedText
-          ? { ...item, text: merge.mergedText }
-          : item
+        item.text === merge.matchedText ? { ...item, text: merge.mergedText } : item
       );
     } else if (!existingTexts.some(t => t.toLowerCase() === text.toLowerCase())) {
-      list.push({ id: Date.now().toString() + Math.random(), text, checked: false, category });
+      list.push({ id: Date.now().toString() + Math.random(), text, checked: false });
     }
   }
 

@@ -104,7 +104,7 @@ function formatQty(n: number): string {
   for (const [val, str] of NICE_FRACS) {
     if (Math.abs(rem - val) < tol) return whole > 0 ? `${whole} ${str}` : str;
   }
-  return n.toFixed(2).replace(/\.?0+$/, '');
+  return String(Math.ceil(n));
 }
 
 function formatInUnit(baseTsp: number, group: UnitGroup, origUnit: UnitInfo): string {
@@ -144,24 +144,49 @@ export function normalizeName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
 }
 
+// Parse a count-based ingredient: "3 eggs" → { qty: 3, name: "eggs" }
+function parseCountIngredient(text: string): { qty: number; name: string } | null {
+  const qtyResult = parseQty(text);
+  if (!qtyResult) return null;
+  const [qty, rest] = qtyResult;
+  // If rest starts with a known unit, it's not count-based
+  if (parseUnit(rest)) return null;
+  const name = rest.trim();
+  if (!name) return null;
+  return { qty, name };
+}
+
 // Merge a new ingredient text into an existing list of ShoppingItem texts.
 // Returns the updated text if merged, or null if no match found.
 export function tryMergeIngredient(
   newText: string,
   existingTexts: string[]
 ): { mergedText: string; matchedText: string } | null {
+  // Try unit-based merge first
   const newParsed = parseIngredient(newText);
-  if (!newParsed) return null;
-
-  for (const existing of existingTexts) {
-    const exParsed = parseIngredient(existing);
-    if (!exParsed) continue;
-    if (normalizeName(exParsed.name) !== normalizeName(newParsed.name)) continue;
-    if (exParsed.unit.group !== newParsed.unit.group) continue;
-
-    const totalBase = exParsed.qty * exParsed.unit.baseValue + newParsed.qty * newParsed.unit.baseValue;
-    const mergedAmount = formatInUnit(totalBase, newParsed.unit.group, exParsed.unit);
-    return { mergedText: `${mergedAmount} ${exParsed.name}`, matchedText: existing };
+  if (newParsed) {
+    for (const existing of existingTexts) {
+      const exParsed = parseIngredient(existing);
+      if (!exParsed) continue;
+      if (normalizeName(exParsed.name) !== normalizeName(newParsed.name)) continue;
+      if (exParsed.unit.group !== newParsed.unit.group) continue;
+      const totalBase = exParsed.qty * exParsed.unit.baseValue + newParsed.qty * newParsed.unit.baseValue;
+      const mergedAmount = formatInUnit(totalBase, newParsed.unit.group, exParsed.unit);
+      return { mergedText: `${mergedAmount} ${exParsed.name}`, matchedText: existing };
+    }
   }
+
+  // Try count-based merge: "3 eggs" + "2 eggs" → "5 eggs"
+  const newCount = parseCountIngredient(newText);
+  if (newCount) {
+    for (const existing of existingTexts) {
+      const exCount = parseCountIngredient(existing);
+      if (!exCount) continue;
+      if (normalizeName(exCount.name) !== normalizeName(newCount.name)) continue;
+      const total = newCount.qty + exCount.qty;
+      return { mergedText: `${formatQty(total)} ${exCount.name}`, matchedText: existing };
+    }
+  }
+
   return null;
 }

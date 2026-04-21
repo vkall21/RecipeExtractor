@@ -17,24 +17,18 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
           <Stack.Navigator
-            screenOptions={{
+            screenOptions={({ navigation, route }) => ({
               headerStyle: { backgroundColor: '#fff' },
               headerTitleStyle: { fontWeight: '700', fontSize: 17 },
               headerTintColor: '#e8553e',
-            }}
+              headerRight: route.name !== 'Settings' ? () => (
+                <Pressable onPress={() => navigation.navigate('Settings')} style={{ marginRight: 4 }}>
+                  <Text style={{ fontSize: 22 }}>⚙️</Text>
+                </Pressable>
+              ) : undefined,
+            })}
           >
-            <Stack.Screen
-              name="Home"
-              component={HomeScreen}
-              options={({ navigation }) => ({
-                title: 'Recipe Extractor',
-                headerRight: () => (
-                  <Pressable onPress={() => navigation.navigate('Settings')} style={{ marginRight: 4 }}>
-                    <Text style={{ fontSize: 22 }}>⚙️</Text>
-                  </Pressable>
-                ),
-              })}
-            />
+            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Recipe Extractor' }} />
             <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={{ title: 'Recipe' }} />
             <Stack.Screen name="ShoppingList" component={ShoppingListScreen} options={{ title: 'Shopping List' }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />

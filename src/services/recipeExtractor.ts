@@ -1,7 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { Recipe } from '../types';
 
-const client = new Anthropic({ apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY, dangerouslyAllowBrowser: true });
+const isWeb = typeof document !== 'undefined';
+const client = new Anthropic({
+  apiKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY,
+  ...(isWeb && { dangerouslyAllowBrowser: true }),
+});
 
 function parseJsonLd(html: string): Recipe | null {
   const scriptRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;

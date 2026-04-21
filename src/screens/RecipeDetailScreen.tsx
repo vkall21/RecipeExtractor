@@ -49,14 +49,19 @@ export default function RecipeDetailScreen({ route, navigation }: any) {
       ? Array.from(checked)
       : recipe.ingredients.map((_, i) => i);
     const toAdd = indices.map(i => scaledIngredients[i]);
-    const categoryMap = await categorizeIngredients(toAdd);
-    const categorized = toAdd.map(text => ({ text, category: categoryMap.get(text) ?? 'Other' as const }));
-    await addIngredientsToShoppingList(categorized);
-    const label = checked.size > 0 ? `${checked.size} selected` : `all ${toAdd.length}`;
-    Alert.alert('Added', `Added ${label} ingredient${toAdd.length !== 1 ? 's' : ''} to your shopping list.`, [
-      { text: 'View List', onPress: () => navigation.navigate('ShoppingList') },
-      { text: 'OK' },
-    ]);
+    try {
+      const categoryMap = await categorizeIngredients(toAdd);
+      const categorized = toAdd.map(text => ({ text, category: categoryMap.get(text) ?? 'Other' as const }));
+      await addIngredientsToShoppingList(categorized);
+      setChecked(new Set());
+      const label = checked.size > 0 ? `${checked.size} selected` : `all ${toAdd.length}`;
+      Alert.alert('Added', `Added ${label} ingredient${toAdd.length !== 1 ? 's' : ''} to your shopping list.`, [
+        { text: 'View List', onPress: () => navigation.navigate('ShoppingList') },
+        { text: 'OK' },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Error', `Could not add to shopping list: ${e?.message ?? 'Unknown error'}`);
+    }
   }
 
   async function handleShare() {

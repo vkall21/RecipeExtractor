@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IngredientCategory, Recipe, ShoppingItem } from '../types';
+import { tryMergeIngredient } from '../utils/ingredientMerger';
 
 const RECIPES_KEY = '@recipes';
 const SHOPPING_KEY = '@shopping';
@@ -35,15 +36,23 @@ export async function saveShoppingList(items: ShoppingItem[]): Promise<void> {
 export async function addIngredientsToShoppingList(
   categorized: { text: string; category: IngredientCategory }[]
 ): Promise<void> {
-  const existing = await loadShoppingList();
-  const existingTexts = new Set(existing.map(i => i.text.toLowerCase()));
-  const newItems: ShoppingItem[] = categorized
-    .filter(c => !existingTexts.has(c.text.toLowerCase()))
-    .map(c => ({
-      id: Date.now().toString() + Math.random(),
-      text: c.text,
-      checked: false,
-      category: c.category,
-    }));
-  await saveShoppingList([...existing, ...newItems]);
+  let list = await loadShoppingList();
+
+  for (const { text, category } of categorized) {
+    const existingTexts = list.map(i => i.text);
+    const merge = tryMergeIngredient(text, existingTexts);
+
+    if (merge) {
+      // Replace the matched item with the merged quantity
+      list = list.map(item =>
+        item.text === merge.matchedText
+          ? { ...item, text: merge.mergedText }
+          : item
+      );
+    } else if (!existingTexts.some(t => t.toLowerCase() === text.toLowerCase())) {
+      list.push({ id: Date.now().toString() + Math.random(), text, checked: false, category });
+    }
+  }
+
+  await saveShoppingList(list);
 }

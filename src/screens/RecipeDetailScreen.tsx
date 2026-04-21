@@ -10,8 +10,9 @@ import {
   View,
 } from 'react-native';
 import { addIngredientsToShoppingList } from '../services/storage';
-import { categorizeIngredients } from '../services/categorizer';
 import { scaleIngredient } from '../utils/scaleIngredient';
+import { convertIngredientText } from '../utils/unitConverter';
+import { useMeasurement } from '../context/MeasurementContext';
 import { Recipe } from '../types';
 
 const MULTIPLIERS: { label: string; value: number }[] = [
@@ -23,10 +24,13 @@ const MULTIPLIERS: { label: string; value: number }[] = [
 
 export default function RecipeDetailScreen({ route, navigation }: any) {
   const recipe: Recipe = route.params.recipe;
+  const { system } = useMeasurement();
   const [multiplier, setMultiplier] = useState(1);
   const [checked, setChecked] = useState<Set<number>>(new Set());
 
-  const scaledIngredients = recipe.ingredients.map(i => scaleIngredient(i, multiplier));
+  const scaledIngredients = recipe.ingredients
+    .map(i => scaleIngredient(i, multiplier))
+    .map(i => convertIngredientText(i, system));
 
   function toggleIngredient(index: number) {
     setChecked(prev => {
@@ -50,14 +54,7 @@ export default function RecipeDetailScreen({ route, navigation }: any) {
       : recipe.ingredients.map((_, i) => i);
     const toAdd = indices.map(i => scaledIngredients[i]);
     try {
-      let categoryMap: Map<string, any>;
-      try {
-        categoryMap = await categorizeIngredients(toAdd);
-      } catch {
-        categoryMap = new Map();
-      }
-      const categorized = toAdd.map(text => ({ text, category: categoryMap.get(text) ?? 'Other' as const }));
-      await addIngredientsToShoppingList(categorized);
+      await addIngredientsToShoppingList(toAdd);
       setChecked(new Set());
       const label = checked.size > 0 ? `${checked.size} selected` : `all ${toAdd.length}`;
       Alert.alert('Added', `Added ${label} ingredient${toAdd.length !== 1 ? 's' : ''} to your shopping list.`, [

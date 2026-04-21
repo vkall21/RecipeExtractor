@@ -10,11 +10,12 @@ import {
   View,
 } from 'react-native';
 import { addIngredientsToShoppingList } from '../services/storage';
+import { categorizeIngredients } from '../services/categorizer';
 import { scaleIngredient } from '../utils/scaleIngredient';
 import { Recipe } from '../types';
 
 const MULTIPLIERS: { label: string; value: number }[] = [
-  { label: '½x', value: 0.5 },
+  { label: '0.5x', value: 0.5 },
   { label: '1x', value: 1 },
   { label: '2x', value: 2 },
   { label: '3x', value: 3 },
@@ -48,7 +49,9 @@ export default function RecipeDetailScreen({ route, navigation }: any) {
       ? Array.from(checked)
       : recipe.ingredients.map((_, i) => i);
     const toAdd = indices.map(i => scaledIngredients[i]);
-    await addIngredientsToShoppingList(toAdd);
+    const categoryMap = await categorizeIngredients(toAdd);
+    const categorized = toAdd.map(text => ({ text, category: categoryMap.get(text) ?? 'Other' as const }));
+    await addIngredientsToShoppingList(categorized);
     const label = checked.size > 0 ? `${checked.size} selected` : `all ${toAdd.length}`;
     Alert.alert('Added', `Added ${label} ingredient${toAdd.length !== 1 ? 's' : ''} to your shopping list.`, [
       { text: 'View List', onPress: () => navigation.navigate('ShoppingList') },
@@ -60,6 +63,7 @@ export default function RecipeDetailScreen({ route, navigation }: any) {
     const body = [
       recipe.title,
       multiplier !== 1 ? `(${MULTIPLIERS.find(m => m.value === multiplier)?.label} recipe)` : '',
+
       recipe.sourceUrl ? `Source: ${recipe.sourceUrl}` : '',
       '',
       'INGREDIENTS',
@@ -90,6 +94,9 @@ export default function RecipeDetailScreen({ route, navigation }: any) {
           </Text>
         </Pressable>
       </View>
+      <Pressable style={styles.shoppingNavBtn} onPress={() => navigation.navigate('ShoppingList')}>
+        <Text style={styles.shoppingNavText}>View Shopping List</Text>
+      </Pressable>
 
       {/* Multiplier */}
       <View style={styles.section}>
@@ -149,7 +156,9 @@ const styles = StyleSheet.create({
   hero: { width: '100%', height: 220 },
   title: { fontSize: 22, fontWeight: '700', color: '#111', margin: 16, marginBottom: 8 },
   description: { fontSize: 14, color: '#555', marginHorizontal: 16, marginBottom: 8, lineHeight: 21 },
-  actions: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginVertical: 12 },
+  actions: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 12, marginBottom: 8 },
+  shoppingNavBtn: { marginHorizontal: 16, marginBottom: 4, padding: 10, alignItems: 'center' },
+  shoppingNavText: { fontSize: 13, color: '#e8553e', fontWeight: '600' },
   actionBtn: { flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 12, alignItems: 'center', backgroundColor: '#fff' },
   primaryBtn: { backgroundColor: '#e8553e', borderColor: '#e8553e' },
   actionText: { fontWeight: '600', fontSize: 14, color: '#333' },

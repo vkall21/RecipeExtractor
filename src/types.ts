@@ -9,8 +9,13 @@ export interface Recipe {
   savedAt: number;
 }
 
+export type IngredientCategory = 'Produce' | 'Meats' | 'Seafood' | 'Spices' | 'Other';
+
+export const CATEGORY_ORDER: IngredientCategory[] = ['Produce', 'Meats', 'Seafood', 'Spices', 'Other'];
+
 export interface ShoppingItem {
   id: string;
   text: string;
   checked: boolean;
+  category: IngredientCategory;
 }

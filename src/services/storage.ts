@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Recipe, ShoppingItem } from '../types';
+import { IngredientCategory, Recipe, ShoppingItem } from '../types';
 
 const RECIPES_KEY = '@recipes';
 const SHOPPING_KEY = '@shopping';
@@ -22,18 +22,28 @@ export async function deleteRecipe(id: string): Promise<void> {
 
 export async function loadShoppingList(): Promise<ShoppingItem[]> {
   const json = await AsyncStorage.getItem(SHOPPING_KEY);
-  return json ? JSON.parse(json) : [];
+  if (!json) return [];
+  const items: ShoppingItem[] = JSON.parse(json);
+  // Backfill category for items saved before categorization was added
+  return items.map(i => ({ ...i, category: i.category ?? 'Other' }));
 }
 
 export async function saveShoppingList(items: ShoppingItem[]): Promise<void> {
   await AsyncStorage.setItem(SHOPPING_KEY, JSON.stringify(items));
 }
 
-export async function addIngredientsToShoppingList(ingredients: string[]): Promise<void> {
+export async function addIngredientsToShoppingList(
+  categorized: { text: string; category: IngredientCategory }[]
+): Promise<void> {
   const existing = await loadShoppingList();
   const existingTexts = new Set(existing.map(i => i.text.toLowerCase()));
-  const newItems: ShoppingItem[] = ingredients
-    .filter(ing => !existingTexts.has(ing.toLowerCase()))
-    .map(ing => ({ id: Date.now().toString() + Math.random(), text: ing, checked: false }));
+  const newItems: ShoppingItem[] = categorized
+    .filter(c => !existingTexts.has(c.text.toLowerCase()))
+    .map(c => ({
+      id: Date.now().toString() + Math.random(),
+      text: c.text,
+      checked: false,
+      category: c.category,
+    }));
   await saveShoppingList([...existing, ...newItems]);
 }

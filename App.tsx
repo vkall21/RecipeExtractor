@@ -28,7 +28,7 @@ export default function App() {
               ) : undefined,
             })}
           >
-            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Recipe Extractor' }} />
+            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Recipe Magic' }} />
             <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={{ title: 'Recipe' }} />
             <Stack.Screen name="ShoppingList" component={ShoppingListScreen} options={{ title: 'Shopping List' }} />
             <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />

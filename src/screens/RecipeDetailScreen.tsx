@@ -50,7 +50,12 @@ export default function RecipeDetailScreen({ route, navigation }: any) {
       : recipe.ingredients.map((_, i) => i);
     const toAdd = indices.map(i => scaledIngredients[i]);
     try {
-      const categoryMap = await categorizeIngredients(toAdd);
+      let categoryMap: Map<string, any>;
+      try {
+        categoryMap = await categorizeIngredients(toAdd);
+      } catch {
+        categoryMap = new Map();
+      }
       const categorized = toAdd.map(text => ({ text, category: categoryMap.get(text) ?? 'Other' as const }));
       await addIngredientsToShoppingList(categorized);
       setChecked(new Set());

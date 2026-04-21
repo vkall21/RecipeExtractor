@@ -45,7 +45,8 @@ function formatAmount(n: number): string {
     }
   }
 
-  return String(Math.ceil(n));
+  const rounded = Math.round(n * 4) / 4;
+  return rounded % 1 === 0 ? String(rounded) : rounded.toFixed(2).replace(/\.?0+$/, '');
 }
 
 // Matches: mixed "1 1/2", fraction "1/2", or decimal/integer "2" / "1.5"

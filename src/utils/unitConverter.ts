@@ -68,18 +68,19 @@ const NICE_FRACS: [number, string][] = [
 ];
 
 function formatQty(n: number, isMetric: boolean): string {
+  if (isMetric) {
+    const r = Math.round(n * 10) / 10;
+    return r % 1 === 0 ? String(r) : r.toFixed(1);
+  }
   const whole = Math.floor(n);
   const rem = n - whole;
   const tol = 0.06;
   if (rem < tol) return String(whole || 0);
   if (1 - rem < tol) return String(whole + 1);
-  if (!isMetric) {
-    for (const [val, str] of NICE_FRACS) {
-      if (Math.abs(rem - val) < tol) return whole > 0 ? `${whole} ${str}` : str;
-    }
+  for (const [val, str] of NICE_FRACS) {
+    if (Math.abs(rem - val) < tol) return whole > 0 ? `${whole} ${str}` : str;
   }
-  // Non-fraction decimals: round up to nearest whole
-  return String(Math.ceil(n));
+  return n.toFixed(1);
 }
 
 // ── Unicode / fraction normalisation ─────────────────────────────────────────

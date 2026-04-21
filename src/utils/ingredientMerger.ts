@@ -104,7 +104,7 @@ function formatQty(n: number): string {
   for (const [val, str] of NICE_FRACS) {
     if (Math.abs(rem - val) < tol) return whole > 0 ? `${whole} ${str}` : str;
   }
-  return String(Math.ceil(n));
+  return n.toFixed(2).replace(/\.?0+$/, '');
 }
 
 function formatInUnit(baseTsp: number, group: UnitGroup, origUnit: UnitInfo): string {

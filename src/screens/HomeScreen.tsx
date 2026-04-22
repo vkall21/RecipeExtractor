@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Pressable,
@@ -18,6 +17,7 @@ import { Recipe } from '../types';
 export default function HomeScreen({ navigation }: any) {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
 
   useFocusEffect(
@@ -29,6 +29,7 @@ export default function HomeScreen({ navigation }: any) {
   async function handleExtract() {
     if (!url.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const recipe = await extractRecipeFromUrl(url.trim());
       await saveRecipe(recipe);
@@ -37,7 +38,7 @@ export default function HomeScreen({ navigation }: any) {
       setRecipes(updated);
       navigation.navigate('RecipeDetail', { recipe });
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'Could not extract recipe.');
+      setError(e.message ?? 'Could not extract recipe.');
     } finally {
       setLoading(false);
     }
@@ -65,6 +66,12 @@ export default function HomeScreen({ navigation }: any) {
           {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Extract</Text>}
         </Pressable>
       </View>
+
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>⚠️ {error}</Text>
+        </View>
+      ) : null}
 
       <FlatList
         data={recipes}
@@ -108,6 +115,8 @@ const styles = StyleSheet.create({
   cardMeta: { fontSize: 12, color: '#888', marginTop: 4 },
   deleteBtn: { paddingHorizontal: 14, justifyContent: 'center' },
   deleteText: { fontSize: 16, color: '#bbb' },
+  errorBox: { margin: 16, marginBottom: 0, backgroundColor: '#fff3f3', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#f5c6c6' },
+  errorText: { color: '#c0392b', fontSize: 13 },
   shoppingBtn: { margin: 16, backgroundColor: '#fff', borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#eee' },
   shoppingBtnText: { fontSize: 16, fontWeight: '600', color: '#333' },
 });

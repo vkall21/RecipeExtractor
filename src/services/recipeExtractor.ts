@@ -80,10 +80,17 @@ async function extractWithClaude(html: string): Promise<Recipe> {
 async function fetchHtml(url: string): Promise<string> {
   const isWeb = typeof document !== 'undefined';
   if (isWeb) {
-    const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     console.log('[extractor] fetching via proxy:', proxyUrl);
     const response = await fetch(proxyUrl);
-    if (!response.ok) throw new Error(`Proxy fetch failed: ${response.status}`);
+    if (!response.ok) {
+      // fallback proxy
+      const fallbackUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+      const fb = await fetch(fallbackUrl);
+      if (!fb.ok) throw new Error(`Both proxies failed: ${fb.status}`);
+      const json = await fb.json();
+      return json.contents as string;
+    }
     return response.text();
   }
   const response = await fetch(url, {

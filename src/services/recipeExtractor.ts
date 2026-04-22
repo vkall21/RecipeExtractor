@@ -24,16 +24,21 @@ function parseJsonLd(html: string): Recipe | null {
   return null;
 }
 
+function flattenSteps(instructions: any[]): string[] {
+  const result: string[] = [];
+  for (const s of instructions) {
+    if (typeof s === 'string') { result.push(s); continue; }
+    // HowToSection — recurse into its itemListElement
+    if (s.itemListElement) { result.push(...flattenSteps(s.itemListElement)); continue; }
+    if (s.text) { result.push(String(s.text)); continue; }
+    result.push(JSON.stringify(s));
+  }
+  return result;
+}
+
 function mapSchemaToRecipe(schema: any): Recipe {
   const ingredients: string[] = (schema.recipeIngredient ?? []).map((i: any) => String(i));
-
-  const rawSteps = schema.recipeInstructions ?? [];
-  const steps: string[] = rawSteps.map((s: any) => {
-    if (typeof s === 'string') return s;
-    if (s.text) return String(s.text);
-    if (s.itemListElement) return s.itemListElement.map((e: any) => e.text ?? e).join(' ');
-    return JSON.stringify(s);
-  });
+  const steps = flattenSteps(schema.recipeInstructions ?? []);
 
   return {
     id: Date.now().toString(),

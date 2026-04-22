@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { loadShoppingList, saveShoppingList } from '../services/storage';
 import { convertIngredientText } from '../utils/unitConverter';
@@ -8,6 +8,7 @@ import { ShoppingItem } from '../types';
 
 export default function ShoppingListScreen({ navigation }: any) {
   const [items, setItems] = useState<ShoppingItem[]>([]);
+  const [listError, setListError] = useState<string | null>(null);
   const { system } = useMeasurement();
 
   useFocusEffect(
@@ -29,15 +30,12 @@ export default function ShoppingListScreen({ navigation }: any) {
   }
 
   async function clearAll() {
-    Alert.alert('Clear all?', 'This will remove all items from your shopping list.', [
-      { text: 'Cancel' },
-      {
-        text: 'Clear', style: 'destructive', onPress: async () => {
-          setItems([]);
-          await saveShoppingList([]);
-        }
-      },
-    ]);
+    try {
+      setItems([]);
+      await saveShoppingList([]);
+    } catch (e: any) {
+      setListError(e.message ?? 'Could not clear list.');
+    }
   }
 
   const checked = items.filter(i => i.checked).length;
@@ -60,6 +58,10 @@ export default function ShoppingListScreen({ navigation }: any) {
           </Pressable>
         )}
       />
+
+      {listError ? (
+        <View style={styles.errorBox}><Text style={styles.errorText}>⚠️ {listError}</Text></View>
+      ) : null}
 
       <View style={styles.footer}>
         <Pressable style={styles.footerNavBtn} onPress={() => navigation.navigate('Home')}>
@@ -95,4 +97,6 @@ const styles = StyleSheet.create({
   footerBtnText: { fontSize: 13, fontWeight: '600', color: '#333' },
   clearAllBtn: { borderColor: '#e8553e' },
   clearAllText: { color: '#e8553e' },
+  errorBox: { margin: 12, marginBottom: 0, backgroundColor: '#fff3f3', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: '#f5c6c6' },
+  errorText: { color: '#c0392b', fontSize: 13 },
 });

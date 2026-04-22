@@ -53,9 +53,10 @@ const WEIGHT_DISPLAY = [
   { name: 'lb', value: 16 }, { name: 'oz', value: 1 },
 ];
 
-const UNICODE_FRACS: Record<string, number> = {
-  '½': 0.5, '¼': 0.25, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3,
-  '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875,
+// Map to slash fractions so "2½" → "2 1/2" and the mixed-number regex matches
+const UNICODE_TO_SLASH: Record<string, string> = {
+  '½': '1/2', '¼': '1/4', '¾': '3/4', '⅓': '1/3', '⅔': '2/3',
+  '⅛': '1/8', '⅜': '3/8', '⅝': '5/8', '⅞': '7/8',
 };
 const NICE_FRACS: [number, string][] = [
   [0.125, '⅛'], [0.25, '¼'], [1/3, '⅓'], [0.375, '⅜'],
@@ -64,7 +65,8 @@ const NICE_FRACS: [number, string][] = [
 
 function normalizeUnicode(s: string): string {
   let r = s;
-  for (const [ch, val] of Object.entries(UNICODE_FRACS)) r = r.replace(new RegExp(ch, 'g'), ` ${val} `);
+  for (const [ch, slash] of Object.entries(UNICODE_TO_SLASH))
+    r = r.replace(new RegExp(ch, 'g'), ` ${slash}`);
   return r.replace(/\s+/g, ' ').trim();
 }
 

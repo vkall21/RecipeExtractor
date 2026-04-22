@@ -80,18 +80,37 @@ async function extractWithClaude(html: string): Promise<Recipe> {
 async function fetchHtml(url: string): Promise<string> {
   const isWeb = typeof document !== 'undefined';
   if (isWeb) {
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-    console.log('[extractor] fetching via proxy:', proxyUrl);
-    const response = await fetch(proxyUrl);
-    if (!response.ok) {
-      // fallback proxy
-      const fallbackUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-      const fb = await fetch(fallbackUrl);
-      if (!fb.ok) throw new Error(`Both proxies failed: ${fb.status}`);
-      const json = await fb.json();
-      return json.contents as string;
+    const encoded = encodeURIComponent(url);
+    const proxies: Array<() => Promise<string>> = [
+      async () => {
+        const r = await fetch(`https://corsproxy.io/?${encoded}`);
+        if (!r.ok) throw new Error(`corsproxy ${r.status}`);
+        return r.text();
+      },
+      async () => {
+        const r = await fetch(`https://api.allorigins.win/get?url=${encoded}`);
+        if (!r.ok) throw new Error(`allorigins ${r.status}`);
+        const j = await r.json();
+        return j.contents as string;
+      },
+      async () => {
+        const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encoded}`);
+        if (!r.ok) throw new Error(`codetabs ${r.status}`);
+        return r.text();
+      },
+    ];
+
+    let lastErr = '';
+    for (const attempt of proxies) {
+      try {
+        const html = await attempt();
+        if (html && html.length > 100) return html;
+      } catch (e: any) {
+        lastErr = e.message;
+        console.log('[extractor] proxy failed:', e.message);
+      }
     }
-    return response.text();
+    throw new Error(`All proxies failed. Last error: ${lastErr}`);
   }
   const response = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; RecipeExtractor/1.0)' },

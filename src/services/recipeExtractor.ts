@@ -86,14 +86,17 @@ async function fetchHtml(url: string): Promise<string> {
   const isWeb = typeof document !== 'undefined';
   if (isWeb) {
     const encoded = encodeURIComponent(url);
+    const desktopAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     const proxies: Array<() => Promise<string>> = [
       async () => {
-        const r = await fetch(`https://corsproxy.io/?${encoded}`);
+        const r = await fetch(`https://corsproxy.io/?${encoded}`, {
+          headers: { 'x-cors-headers': JSON.stringify({ 'User-Agent': desktopAgent }) },
+        });
         if (!r.ok) throw new Error(`corsproxy ${r.status}`);
         return r.text();
       },
       async () => {
-        const r = await fetch(`https://api.allorigins.win/get?url=${encoded}`);
+        const r = await fetch(`https://api.allorigins.win/get?url=${encoded}&charset=utf-8`);
         if (!r.ok) throw new Error(`allorigins ${r.status}`);
         const j = await r.json();
         return j.contents as string;
@@ -131,7 +134,20 @@ export async function extractRecipeFromUrl(url: string): Promise<Recipe> {
   const fromJsonLd = parseJsonLd(html);
   console.log('[extractor] JSON-LD found:', !!fromJsonLd);
 
-  const recipe = fromJsonLd ?? (await extractWithClaude(html));
+  let recipe: Recipe;
+  if (fromJsonLd) {
+    recipe = fromJsonLd;
+  } else {
+    try {
+      recipe = await extractWithClaude(html);
+    } catch (e: any) {
+      const msg = e.message ?? '';
+      if (msg.includes('credit') || msg.includes('balance') || msg.includes('402')) {
+        throw new Error('This page requires AI extraction but the API credit balance is too low. Please add credits at console.anthropic.com → Billing.');
+      }
+      throw e;
+    }
+  }
   console.log('[extractor] recipe title:', recipe.title);
   recipe.sourceUrl = url;
   return recipe;

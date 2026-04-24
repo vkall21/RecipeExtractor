@@ -4,6 +4,23 @@ import { tryMergeIngredient } from '../utils/ingredientMerger';
 
 const RECIPES_KEY = '@recipes';
 const SHOPPING_KEY = '@shopping';
+const LLM_CONFIG_KEY = '@llm_config';
+
+export type LLMProvider = 'claude' | 'openai' | 'gemini';
+export interface LLMConfig { provider: LLMProvider; apiKey: string; }
+
+export async function getLLMConfig(): Promise<LLMConfig | null> {
+  const json = await AsyncStorage.getItem(LLM_CONFIG_KEY);
+  return json ? JSON.parse(json) : null;
+}
+
+export async function saveLLMConfig(config: LLMConfig): Promise<void> {
+  await AsyncStorage.setItem(LLM_CONFIG_KEY, JSON.stringify(config));
+}
+
+export async function clearLLMConfig(): Promise<void> {
+  await AsyncStorage.removeItem(LLM_CONFIG_KEY);
+}
 
 export async function loadRecipes(): Promise<Recipe[]> {
   const json = await AsyncStorage.getItem(RECIPES_KEY);

@@ -150,24 +150,22 @@ async function extractWithLLM(html: string, config: LLMConfig | null): Promise<R
 async function fetchHtml(url: string): Promise<string> {
   if (isWeb) {
     const encoded = encodeURIComponent(url);
-    const desktopAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     const proxies: Array<() => Promise<string>> = [
+      // Raw-HTML proxies first so the JSON-LD fast path still works.
       async () => {
-        const r = await fetch(`https://corsproxy.io/?${encoded}`, {
-          headers: { 'x-cors-headers': JSON.stringify({ 'User-Agent': desktopAgent }) },
-        });
-        if (!r.ok) throw new Error(`corsproxy ${r.status}`);
-        return r.text();
-      },
-      async () => {
-        const r = await fetch(`https://api.allorigins.win/get?url=${encoded}&charset=utf-8`);
+        const r = await fetch(`https://api.allorigins.win/raw?url=${encoded}`);
         if (!r.ok) throw new Error(`allorigins ${r.status}`);
-        const j = await r.json();
-        return j.contents as string;
+        return r.text();
       },
       async () => {
         const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encoded}`);
         if (!r.ok) throw new Error(`codetabs ${r.status}`);
+        return r.text();
+      },
+      // Reader fallback: returns markdown (no JSON-LD), but the LLM path handles it.
+      async () => {
+        const r = await fetch(`https://r.jina.ai/${url}`);
+        if (!r.ok) throw new Error(`jina ${r.status}`);
         return r.text();
       },
     ];
